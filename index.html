@@ -14,7 +14,6 @@
     --cream: #E6E1C3;
     --offblack: #1E1E1E;
     --orange: #FF7B2E;
-    --burn-ease: cubic-bezier(0.5, 0.1, 0.6, 0.4);
     --burn-time: 3s;
   }
 
@@ -109,11 +108,11 @@
   /* ---------- Pilha: texto embaixo, papel preto por cima ---------- */
   .stack {
     position: relative;
+    overflow: hidden;
     opacity: 0;
     animation: rise 0.9s ease 0.75s forwards;
   }
 
-  /* Texto que já está por debaixo do papel */
   .under {
     text-align: center;
     max-width: 520px;
@@ -136,7 +135,7 @@
     align-items: center;
     justify-content: center;
     will-change: clip-path;
-    clip-path: inset(0 0 0 0 round 18px);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
   }
 
   .obrigado {
@@ -149,7 +148,7 @@
     text-align: center;
   }
 
-  .obrigado .de-nos { 
+  .obrigado .de-nos {
     display: block;
     font-family: 'Archivo', sans-serif;
     font-size: 14px;
@@ -161,66 +160,78 @@
     margin-top: 10px;
   }
 
-  /* queima de cima para baixo, revelando o texto por baixo */
+  /* Queima na diagonal: do canto inferior direito ao superior esquerdo.
+     O polígono mantém 5 pontos em todos os keyframes para interpolar suave na GPU. */
   .burning .cover {
-    animation: burnclip var(--burn-time) var(--burn-ease) forwards;
+    animation: burndiag var(--burn-time) linear forwards;
   }
 
-  @keyframes burnclip {
-    from { clip-path: inset(0% 0 0 0 round 18px); }
-    to   { clip-path: inset(101% 0 0 0 round 18px); }
+  @keyframes burndiag {
+    0%   { clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%); }
+    50%  { clip-path: polygon(0 0, 100% 0, 100% 0,   0 100%,    0 100%); }
+    100% { clip-path: polygon(0 0, 0 0,     0 0,     0 0,       0 0); }
   }
 
-  /* Borda de brasa que acompanha a linha da queima */
-  .edge {
+  /* Linha de brasa diagonal acompanhando a frente do fogo */
+  .ember {
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: 0;
     z-index: 3;
+    height: 10px;
+    border-radius: 6px;
     opacity: 0;
     pointer-events: none;
     will-change: transform;
+    background: linear-gradient(90deg,
+      rgba(253, 52, 52, 0) 0%,
+      var(--red) 12%,
+      var(--orange) 35%,
+      #FFC14D 50%,
+      var(--orange) 65%,
+      var(--red) 88%,
+      rgba(253, 52, 52, 0) 100%);
+    box-shadow: 0 0 18px 6px rgba(253, 82, 52, 0.5), 0 0 40px 12px rgba(255, 123, 46, 0.22);
+    filter: blur(0.5px);
   }
 
-  .burning .edge {
-    opacity: 1;
-    animation: edgemove var(--burn-time) var(--burn-ease) forwards;
-  }
-
-  @keyframes edgemove {
-    from { transform: translateY(0); }
-    to   { transform: translateY(100%); }
-  }
-
-  .edge-visual {
+  .ember::after {
+    content: '';
     position: absolute;
-    top: -22px;
-    left: -4px;
-    right: -4px;
-    height: 24px;
-  }
-
-  .edge-visual svg { display: block; width: 100%; height: 100%; }
-
-  .glow {
-    position: absolute;
-    left: 2%;
-    right: 2%;
-    bottom: -3px;
-    height: 7px;
+    inset: 2px 6%;
     border-radius: 6px;
-    background: linear-gradient(90deg, var(--red), var(--orange), #FFC14D, var(--orange), var(--red));
-    box-shadow: 0 0 16px 5px rgba(253, 82, 52, 0.55), 0 0 36px 10px rgba(255, 123, 46, 0.25);
-    animation: glowpulse 0.5s ease-in-out infinite alternate;
+    background: repeating-linear-gradient(90deg,
+      transparent 0 14px,
+      rgba(255, 220, 140, 0.85) 14px 20px);
+    mix-blend-mode: screen;
+    animation: cintila 0.35s steps(2) infinite;
   }
 
-  @keyframes glowpulse {
-    from { filter: brightness(1); }
-    to   { filter: brightness(1.35); }
+  @keyframes cintila {
+    from { opacity: 0.5; }
+    to   { opacity: 1; }
+  }
+
+  .burning .ember {
+    opacity: 1;
+    animation: emberdiag var(--burn-time) linear forwards, emberpulse 0.5s ease-in-out infinite alternate;
+  }
+
+  /* mesmo keyframe intermediário (50%) do clip-path para manter o sincronismo */
+  @keyframes emberdiag {
+    0%   { transform: translate(calc(var(--w) - 50%), calc(var(--h) - 50%)) rotate(var(--ang)); }
+    50%  { transform: translate(calc(var(--w) / 2 - 50%), calc(var(--h) / 2 - 50%)) rotate(var(--ang)); }
+    100% { transform: translate(-50%, -50%) rotate(var(--ang)); }
+  }
+
+  @keyframes emberpulse {
+    from { filter: blur(0.5px) brightness(1); }
+    to   { filter: blur(0.5px) brightness(1.4); }
   }
 
   .spark {
     position: absolute;
-    bottom: 2px;
+    top: -2px;
     width: 5px;
     height: 5px;
     border-radius: 50%;
@@ -229,17 +240,15 @@
     opacity: 0;
   }
 
-  .burning .spark {
-    animation: sparkfly 1s ease-out infinite;
-  }
+  .burning .spark { animation: sparkfly 0.9s ease-out infinite; }
 
   @keyframes sparkfly {
     0%   { opacity: 1; transform: translateY(0) scale(1); }
-    100% { opacity: 0; transform: translateY(-90px) translateX(var(--sx, 0px)) scale(0.4); }
+    100% { opacity: 0; transform: translateY(-70px) translateX(var(--sx, 0px)) scale(0.4); }
   }
 
   .stack.burned .cover,
-  .stack.burned .edge { display: none; }
+  .stack.burned .ember { display: none; }
 
   /* ---------- Assinatura (aparece após a queima) ---------- */
   .signature {
@@ -287,7 +296,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .bunting svg, .flame, .glow { animation: none; }
+    .bunting svg, .flame, .ember::after { animation: none; }
     .eyebrow, h1, .sub, .fire, .stack { animation: none; opacity: 1; }
     .signature { transition: none; }
   }
@@ -298,7 +307,7 @@
     .hero { padding-top: 38px; }
     h1 { font-size: clamp(32px, 10vw, 42px); }
     .fire { margin: 32px 0; }
-    .under { padding: 36px 4px; }
+    .under { padding: 28px 4px; }
     .under p { font-size: 16px; }
     .cover { border-radius: 16px; }
     .signature { margin-top: 34px; }
@@ -354,7 +363,7 @@
       </svg>
     </div>
 
-    <!-- Texto por baixo + papel preto que queima por cima -->
+    <!-- Texto por baixo + papel preto que queima na diagonal -->
     <div class="stack" id="stack">
       <div class="under">
         <p>Se você está lendo isto, é porque a nossa cesta chegou até você. E ela carrega mais do que delícias juninas: carrega um <strong>muito obrigado</strong>.</p>
@@ -365,19 +374,12 @@
         <p class="obrigado">Muito<br>obrigado<span class="de-nos">de toda a equipe CAP.CO</span></p>
       </div>
 
-      <div class="edge" aria-hidden="true">
-        <div class="edge-visual">
-          <svg viewBox="0 0 600 24" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,24 L0,18 L14,21 L26,12 L38,19 L52,15 L64,21 L80,10 L94,18 L108,14 L122,20 L138,9 L152,17 L166,13 L180,20 L196,11 L210,18 L224,14 L238,21 L254,10 L268,17 L282,13 L296,20 L312,12 L326,19 L340,15 L354,21 L370,10 L384,18 L398,13 L412,20 L428,11 L442,17 L456,14 L470,21 L486,9 L500,18 L514,14 L528,20 L544,12 L558,18 L572,15 L586,21 L600,17 L600,24 Z" fill="#1E1E1E"/>
-          </svg>
-          <div class="glow"></div>
-          <span class="spark" style="left: 10%; --sx: -16px; animation-delay: 0s;"></span>
-          <span class="spark" style="left: 26%; --sx: 12px; animation-delay: 0.35s;"></span>
-          <span class="spark" style="left: 44%; --sx: -10px; animation-delay: 0.15s;"></span>
-          <span class="spark" style="left: 60%; --sx: 18px; animation-delay: 0.55s;"></span>
-          <span class="spark" style="left: 76%; --sx: -14px; animation-delay: 0.25s;"></span>
-          <span class="spark" style="left: 90%; --sx: 10px; animation-delay: 0.45s;"></span>
-        </div>
+      <div class="ember" id="ember" aria-hidden="true">
+        <span class="spark" style="left: 18%; --sx: -14px; animation-delay: 0s;"></span>
+        <span class="spark" style="left: 36%; --sx: 10px; animation-delay: 0.3s;"></span>
+        <span class="spark" style="left: 52%; --sx: -8px; animation-delay: 0.15s;"></span>
+        <span class="spark" style="left: 68%; --sx: 16px; animation-delay: 0.5s;"></span>
+        <span class="spark" style="left: 84%; --sx: -12px; animation-delay: 0.4s;"></span>
       </div>
     </div>
 
@@ -394,8 +396,10 @@
   <script>
     (function () {
       var stack = document.getElementById('stack');
+      var ember = document.getElementById('ember');
       var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var BURN_MS = 3000;
+      var WAIT_MS = 5000;
 
       if (reduced) {
         stack.classList.add('burned');
@@ -403,15 +407,24 @@
         return;
       }
 
-      // tempo para ler o "muito obrigado" antes da queima
       setTimeout(function () {
+        // mede o card no momento da queima para alinhar a brasa à diagonal
+        var w = stack.offsetWidth;
+        var h = stack.offsetHeight;
+        var ang = Math.atan2(-h, w); // direção paralela à antidiagonal do card
+
+        ember.style.width = Math.ceil(Math.hypot(w, h) * 1.15) + 'px';
+        ember.style.setProperty('--w', w + 'px');
+        ember.style.setProperty('--h', h + 'px');
+        ember.style.setProperty('--ang', ang + 'rad');
+
         stack.classList.add('burning');
 
         setTimeout(function () {
           stack.classList.add('burned');
           document.body.classList.add('revealed');
         }, BURN_MS + 100);
-      }, 5000);
+      }, WAIT_MS);
     })();
   </script>
 
